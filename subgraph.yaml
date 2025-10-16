@@ -1,0 +1,58 @@
+specVersion: 0.0.4
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  # -------- Marketplace facet (no whitelist events here) --------
+  - kind: ethereum
+    name: IdeationMarketDiamond
+    network: sepolia
+    source:
+      address: "0x8cE90712463c87a6d62941D67C3507D090Ea9d79"
+      abi: IdeationMarketFacet
+      startBlock: 9263094
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Listing
+      abis:
+        - name: IdeationMarketFacet
+          file: ./abis/IdeationMarketFacet.json
+      eventHandlers:
+        - event: ListingCreated(indexed uint128,indexed address,indexed uint256,uint256,uint256,uint32,address,bool,bool,address,uint256,uint256)
+          handler: handleListingCreated
+        - event: ListingUpdated(indexed uint128,indexed address,indexed uint256,uint256,uint256,uint32,address,bool,bool,address,uint256,uint256)
+          handler: handleListingUpdated
+        - event: ListingPurchased(indexed uint128,indexed address,indexed uint256,uint256,bool,uint256,uint32,address,address,address,uint256,uint256)
+          handler: handleListingPurchased
+        - event: ListingCanceled(indexed uint128,indexed address,indexed uint256,address,address)
+          handler: handleListingCanceled
+        - event: ListingCanceledDueToInvalidListing(indexed uint128,indexed address,indexed uint256,address,address)
+          handler: handleListingInvalidated
+      file: ./src/mapping.ts
+
+  # -------- Buyer whitelist facet (same address, different ABI) --------
+  - kind: ethereum
+    name: BuyerWhitelist
+    network: sepolia
+    source:
+      address: "0x8cE90712463c87a6d62941D67C3507D090Ea9d79"
+      abi: BuyerWhitelistFacet
+      startBlock: 9263094
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - WhitelistedBuyer
+      abis:
+        - name: BuyerWhitelistFacet
+          file: ./abis/BuyerWhitelistFacet.json
+      eventHandlers:
+        - event: BuyerWhitelisted(indexed uint128,indexed address)
+          handler: handleBuyerWhitelisted
+        - event: BuyerRemovedFromWhitelist(indexed uint128,indexed address)
+          handler: handleBuyerRemovedFromWhitelist
+      file: ./src/mapping.ts

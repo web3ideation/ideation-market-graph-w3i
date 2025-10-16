@@ -1,0 +1,26 @@
+# Node / Yarn
+node_modules/
+yarn-error.log
+
+# The Graph artifacts
+generated/
+build/
+
+# Environment
+.env
+.env.*
+
+# Editors/OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Logs & dumps
+*.log
+*.pid
+*.seed
+*.csv
+
+# Optional: if you ever bundle
+dist/

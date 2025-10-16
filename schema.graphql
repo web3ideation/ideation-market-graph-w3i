@@ -1,0 +1,42 @@
+enum TokenStandard { ERC721 ERC1155 }
+enum ListingStatus { LISTED PARTIALLY_FILLED SOLD_OUT CANCELED INVALIDATED }
+enum ListingType { PURE_ETH SWAP_AND_ETH PURE_SWAP }
+
+type Listing @entity {
+  id: ID!                         # "<chainId>-<listingId>"
+  chainId: Int!                   # 11155111 for Sepolia
+  listingId: BigInt!
+  tokenAddress: Bytes!
+  tokenId: BigInt!
+  tokenStandard: TokenStandard!
+
+  erc1155QuantityListed: BigInt    # null for ERC721
+  remainingQuantity: BigInt        # null for ERC721
+  priceTotal: BigInt!              # remaining total (1155) or full price (721)
+  unitPrice: BigInt                # only when partial buys enabled (1155)
+
+  buyerWhitelistEnabled: Boolean!
+  partialBuyEnabled: Boolean!
+
+  listingType: ListingType!
+  feeRate: BigInt!                    # denominator 100_000
+
+  desiredTokenAddress: Bytes
+  desiredTokenId: BigInt
+  desiredErc1155Quantity: BigInt
+
+  seller: Bytes!
+
+  status: ListingStatus!
+  active: Boolean!                 # convenience: status ∈ {LISTED, PARTIALLY_FILLED}
+
+  createdAt: BigInt!               # block.timestamp
+}
+
+type WhitelistedBuyer @entity {
+  id: ID!                # "<chainId>-<listingId>-<buyerLower>"
+  chainId: Int!
+  listingId: BigInt!
+  buyer: Bytes!
+  createdAt: BigInt!
+}
