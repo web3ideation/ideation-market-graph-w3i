@@ -21,16 +21,22 @@ dataSources:
         - name: IdeationMarketFacet
           file: ./abis/IdeationMarketFacet.json
       eventHandlers:
-        - event: ListingCreated(indexed uint128,indexed address,indexed uint256,uint256,uint256,uint32,address,bool,bool,address,uint256,uint256)
+        - event: ListingCreated(indexed uint128,indexed address,indexed uint256,uint256,uint256,address,uint32,address,bool,bool,address,uint256,uint256)
           handler: handleListingCreated
-        - event: ListingUpdated(indexed uint128,indexed address,indexed uint256,uint256,uint256,uint32,address,bool,bool,address,uint256,uint256)
+        - event: ListingUpdated(indexed uint128,indexed address,indexed uint256,uint256,uint256,address,uint32,address,bool,bool,address,uint256,uint256)
           handler: handleListingUpdated
-        - event: ListingPurchased(indexed uint128,indexed address,indexed uint256,uint256,bool,uint256,uint32,address,address,address,uint256,uint256)
+        - event: ListingPurchased(indexed uint128,indexed address,indexed uint256,uint256,bool,uint256,address,uint32,address,address,address,uint256,uint256)
           handler: handleListingPurchased
         - event: ListingCanceled(indexed uint128,indexed address,indexed uint256,address,address)
           handler: handleListingCanceled
         - event: ListingCanceledDueToInvalidListing(indexed uint128,indexed address,indexed uint256,address,address)
           handler: handleListingInvalidated
+        - event: InnovationFeePaid(indexed uint128,indexed address,indexed address,uint256)
+          handler: handleInnovationFeePaid
+        - event: RoyaltyPaid(indexed uint128,indexed address,indexed address,uint256)
+          handler: handleRoyaltyPaid
+        - event: SellerProceedsPaid(indexed uint128,indexed address,indexed address,uint256)
+          handler: handleSellerProceedsPaid
       file: ./src/mapping.ts
 
   # -------- Buyer whitelist facet (same address, different ABI) --------
@@ -55,4 +61,52 @@ dataSources:
           handler: handleBuyerWhitelisted
         - event: BuyerRemovedFromWhitelist(indexed uint128,indexed address)
           handler: handleBuyerRemovedFromWhitelist
+      file: ./src/mapping.ts
+
+  # -------- Collection whitelist facet (same address, different ABI) --------
+  - kind: ethereum
+    name: CollectionWhitelist
+    network: sepolia
+    source:
+      address: "0x8cE90712463c87a6d62941D67C3507D090Ea9d79"
+      abi: CollectionWhitelistFacet
+      startBlock: 9263094
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - WhitelistedCollection
+      abis:
+        - name: CollectionWhitelistFacet
+          file: ./abis/CollectionWhitelistFacet.json
+      eventHandlers:
+        - event: CollectionAddedToWhitelist(indexed address)
+          handler: handleCollectionAddedToWhitelist
+        - event: CollectionRemovedFromWhitelist(indexed address)
+          handler: handleCollectionRemovedFromWhitelist
+      file: ./src/mapping.ts
+
+  # -------- Currency whitelist facet (same address, different ABI) --------
+  - kind: ethereum
+    name: CurrencyWhitelist
+    network: sepolia
+    source:
+      address: "0x8cE90712463c87a6d62941D67C3507D090Ea9d79"
+      abi: CurrencyWhitelistFacet
+      startBlock: 9263094
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AllowedCurrency
+      abis:
+        - name: CurrencyWhitelistFacet
+          file: ./abis/CurrencyWhitelistFacet.json
+      eventHandlers:
+        - event: CurrencyAllowed(indexed address)
+          handler: handleCurrencyAllowed
+        - event: CurrencyRemoved(indexed address)
+          handler: handleCurrencyRemoved
       file: ./src/mapping.ts

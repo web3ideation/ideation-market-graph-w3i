@@ -1,15 +1,15 @@
 # ideation-market-graph-w3i
 
-Subgraph for the **IdeationMarket Diamond** (EIP-2535). It indexes the marketplace’s listing lifecycle and per-listing buyer whitelists into two minimal entities for fast UI queries.
+Subgraph for the **IdeationMarket Diamond** (EIP-2535). It indexes the marketplace's listing lifecycle, payment distributions, per-listing buyer whitelists, global collection curation, and currency allowlists for comprehensive marketplace data.
 
 - **Network:** Sepolia (chainId `11155111`)
 - **Diamond (proxy):** `0x8cE90712463c87a6d62941D67C3507D090Ea9d79`
-- **Data sources:** `IdeationMarketFacet` (listings), `BuyerWhitelistFacet` (whitelist)
-- **Entities:** `Listing`, `WhitelistedBuyer`
+- **Data sources:** `IdeationMarketFacet` (listings + payments), `BuyerWhitelistFacet` (per-listing whitelist), `CollectionWhitelistFacet` (global curation), `CurrencyWhitelistFacet` (payment tokens)
+- **Entities:** `Listing`, `Payment`, `WhitelistedBuyer`, `WhitelistedCollection`, `AllowedCurrency`
 
 ---
 
-## What’s indexed
+## What's indexed
 
 ### `Listing` (one row per `listingId`)
 - `listingId`, `tokenAddress`, `tokenId`, `tokenStandard`
@@ -17,6 +17,7 @@ Subgraph for the **IdeationMarket Diamond** (EIP-2535). It indexes the marketpla
 - `remainingQuantity` (decrements on each purchase; `null` for ERC-721)
 - `priceTotal` (remaining total; for ERC-721 becomes `0` after sale)
 - `unitPrice` (set only if partial buys are enabled for ERC-1155)
+- `currency` (payment token: ETH = `0x0000...`, or ERC-20 address)
 - Flags: `buyerWhitelistEnabled`, `partialBuyEnabled`
 - `listingType` (`PURE_ETH` | `SWAP_AND_ETH` | `PURE_SWAP`)
 - `feeRate` (snapshot at create/update; denominator `100_000`)
@@ -24,10 +25,27 @@ Subgraph for the **IdeationMarket Diamond** (EIP-2535). It indexes the marketpla
 - `seller`, `status` (`LISTED` | `PARTIALLY_FILLED` | `SOLD_OUT` | `CANCELED` | `INVALIDATED`), `active`
 - `createdAt`
 
+### `Payment` (one row per payment event)
+- `listingId` (foreign key), `recipient`, `currency`, `amount`
+- `paymentType` (`INNOVATION_FEE` | `ROYALTY` | `SELLER_PROCEEDS`)
+- `timestamp`, `txHash`, `blockNumber`
+
 ### `WhitelistedBuyer` (presence = whitelisted)
 - `listingId`, `buyer`, `createdAt`
 
-> We intentionally avoid arrays on the listing. Whitelist membership is represented as separate rows keyed by `(listingId, buyer)` and **deleted** on revoke.
+### `WhitelistedCollection` (global NFT curation)
+- `collection` (NFT contract address)
+- `isWhitelisted` (boolean flag - never deleted, only toggled)
+- `addedAt`, `lastUpdatedAt`
+
+### `AllowedCurrency` (global payment token allowlist)
+- `currency` (ERC-20 address or `0x0000...` for ETH)
+- `isAllowed` (boolean flag - never deleted, only toggled)
+- `addedAt`, `lastUpdatedAt`
+
+> **Design notes:**
+> - Buyer whitelist entries are **deleted** on revoke (no boolean flag).
+> - Collection/Currency entities use **boolean flags** (never deleted) to maintain audit trail.
 
 ---
 
@@ -129,6 +147,52 @@ query($c: Bytes!, $t: BigInt!) {
     seller
     priceTotal
     remainingQuantity
+    currency
+  }
+}
+```
+
+**Payment history for a listing**
+```graphql
+query($listing: BigInt!) {
+  payments(
+    where: { listingId: $listing }
+    orderBy: timestamp
+    orderDirection: asc
+  ) {
+    recipient
+    amount
+    currency
+    paymentType
+    timestamp
+  }
+}
+```
+
+**Currently whitelisted NFT collections**
+```graphql
+query {
+  whitelistedCollections(
+    where: { isWhitelisted: true }
+    first: 100
+  ) {
+    collection
+    addedAt
+    lastUpdatedAt
+  }
+}
+```
+
+**Currently allowed payment currencies**
+```graphql
+query {
+  allowedCurrencies(
+    where: { isAllowed: true }
+    first: 50
+  ) {
+    currency
+    addedAt
+    lastUpdatedAt
   }
 }
 ```
@@ -139,7 +203,9 @@ query($c: Bytes!, $t: BigInt!) {
 
 - `feeRate` stored as `BigInt` (contract uses denominator `100_000`; values are small but we keep it future‑proof).
 - `unitPrice` is set only when partial buys are enabled and `erc1155QuantityListed > 1`.
-- Whitelist entries are **created** on `BuyerWhitelisted` and **deleted** on `BuyerRemovedFromWhitelist`.
+- Buyer whitelist entries are **created** on `BuyerWhitelisted` and **deleted** on `BuyerRemovedFromWhitelist`.
+- Collection/Currency whitelist entries are **never deleted**, only toggled via `isWhitelisted`/`isAllowed` boolean flags.
+- All 4 data sources point to the same Diamond address but decode different events via separate ABIs (EIP-2535 pattern).
 
 ---
 

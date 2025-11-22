@@ -1,6 +1,7 @@
 enum TokenStandard { ERC721 ERC1155 }
 enum ListingStatus { LISTED PARTIALLY_FILLED SOLD_OUT CANCELED INVALIDATED }
 enum ListingType { PURE_ETH SWAP_AND_ETH PURE_SWAP }
+enum PaymentType { INNOVATION_FEE ROYALTY SELLER_PROCEEDS }
 
 type Listing @entity {
   id: ID!                         # "<chainId>-<listingId>"
@@ -20,6 +21,7 @@ type Listing @entity {
 
   listingType: ListingType!
   feeRate: BigInt!                    # denominator 100_000
+  currency: Bytes!                    # payment currency (address(0) = ETH)
 
   desiredTokenAddress: Bytes
   desiredTokenId: BigInt
@@ -33,10 +35,41 @@ type Listing @entity {
   createdAt: BigInt!               # block.timestamp
 }
 
+type Payment @entity {
+  id: ID!                         # "<chainId>-<txHash>-<logIndex>"
+  chainId: Int!
+  listingId: BigInt!
+  recipient: Bytes!
+  currency: Bytes!                # address(0) = ETH, otherwise ERC-20
+  amount: BigInt!
+  paymentType: PaymentType!       # INNOVATION_FEE | ROYALTY | SELLER_PROCEEDS
+  timestamp: BigInt!
+  txHash: Bytes!
+  blockNumber: BigInt!
+}
+
 type WhitelistedBuyer @entity {
   id: ID!                # "<chainId>-<listingId>-<buyerLower>"
   chainId: Int!
   listingId: BigInt!
   buyer: Bytes!
   createdAt: BigInt!
+}
+
+type WhitelistedCollection @entity {
+  id: ID!                # "<chainId>-<collectionAddress>"
+  chainId: Int!
+  collection: Bytes!
+  isWhitelisted: Boolean!
+  addedAt: BigInt!       # first added timestamp
+  lastUpdatedAt: BigInt! # last add/remove timestamp
+}
+
+type AllowedCurrency @entity {
+  id: ID!                # "<chainId>-<currencyAddress>"
+  chainId: Int!
+  currency: Bytes!       # address(0) = ETH
+  isAllowed: Boolean!
+  addedAt: BigInt!       # first added timestamp
+  lastUpdatedAt: BigInt! # last add/remove timestamp
 }

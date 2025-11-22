@@ -8,6 +8,9 @@ import {
   ListingPurchased,
   ListingCanceled,
   ListingCanceledDueToInvalidListing,
+  InnovationFeePaid,
+  RoyaltyPaid,
+  SellerProceedsPaid,
 } from "../generated/IdeationMarketDiamond/IdeationMarketFacet";
 
 // -------- Buyer whitelist facet events (from data source: BuyerWhitelist) --------
@@ -16,7 +19,25 @@ import {
   BuyerRemovedFromWhitelist,
 } from "../generated/BuyerWhitelist/BuyerWhitelistFacet";
 
-import { Listing, WhitelistedBuyer } from "../generated/schema";
+// -------- Collection whitelist facet events --------
+import {
+  CollectionAddedToWhitelist,
+  CollectionRemovedFromWhitelist,
+} from "../generated/CollectionWhitelist/CollectionWhitelistFacet";
+
+// -------- Currency whitelist facet events --------
+import {
+  CurrencyAllowed,
+  CurrencyRemoved,
+} from "../generated/CurrencyWhitelist/CurrencyWhitelistFacet";
+
+import {
+  Listing,
+  WhitelistedBuyer,
+  Payment,
+  WhitelistedCollection,
+  AllowedCurrency,
+} from "../generated/schema";
 
 const CHAIN_ID = 11155111; // Sepolia
 
@@ -63,6 +84,7 @@ export function handleListingCreated(ev: ListingCreated): void {
   }
 
   l.priceTotal = ev.params.price;
+  l.currency = ev.params.currency;
 
   if (
     ev.params.partialBuyEnabled &&
@@ -98,6 +120,7 @@ export function handleListingUpdated(ev: EvListingUpdated): void {
 
   // mutable fields
   l.priceTotal = ev.params.price;
+  l.currency = ev.params.currency;
   l.feeRate = ev.params.feeRate;
   l.buyerWhitelistEnabled = ev.params.buyerWhitelistEnabled;
   l.partialBuyEnabled = ev.params.partialBuyEnabled;
@@ -206,4 +229,146 @@ export function handleBuyerRemovedFromWhitelist(
 ): void {
   const id = whitelistEntityId(ev.params.listingId, ev.params.buyer);
   store.remove("WhitelistedBuyer", id);
+}
+
+// ------------------------- payment tracking handlers -------------------------
+
+function paymentEntityId(txHash: string, logIndex: BigInt): string {
+  // id = "<chainId>-<txHash>-<logIndex>"
+  return CHAIN_ID.toString() + "-" + txHash + "-" + logIndex.toString();
+}
+
+function collectionEntityId(collection: Address): string {
+  // id = "<chainId>-<collectionAddress>"
+  return CHAIN_ID.toString() + "-" + collection.toHexString();
+}
+
+function currencyEntityId(currency: Address): string {
+  // id = "<chainId>-<currencyAddress>"
+  return CHAIN_ID.toString() + "-" + currency.toHexString();
+}
+
+export function handleInnovationFeePaid(ev: InnovationFeePaid): void {
+  const id = paymentEntityId(ev.transaction.hash.toHexString(), ev.logIndex);
+  const payment = new Payment(id);
+
+  payment.chainId = CHAIN_ID;
+  payment.listingId = ev.params.listingId;
+  payment.recipient = ev.params.marketplaceOwner;
+  payment.currency = ev.params.currency;
+  payment.amount = ev.params.innovationFee;
+  payment.paymentType = "INNOVATION_FEE";
+  payment.timestamp = ev.block.timestamp;
+  payment.txHash = ev.transaction.hash;
+  payment.blockNumber = ev.block.number;
+
+  payment.save();
+}
+
+export function handleRoyaltyPaid(ev: RoyaltyPaid): void {
+  const id = paymentEntityId(ev.transaction.hash.toHexString(), ev.logIndex);
+  const payment = new Payment(id);
+
+  payment.chainId = CHAIN_ID;
+  payment.listingId = ev.params.listingId;
+  payment.recipient = ev.params.royaltyReceiver;
+  payment.currency = ev.params.currency;
+  payment.amount = ev.params.royaltyAmount;
+  payment.paymentType = "ROYALTY";
+  payment.timestamp = ev.block.timestamp;
+  payment.txHash = ev.transaction.hash;
+  payment.blockNumber = ev.block.number;
+
+  payment.save();
+}
+
+export function handleSellerProceedsPaid(ev: SellerProceedsPaid): void {
+  const id = paymentEntityId(ev.transaction.hash.toHexString(), ev.logIndex);
+  const payment = new Payment(id);
+
+  payment.chainId = CHAIN_ID;
+  payment.listingId = ev.params.listingId;
+  payment.recipient = ev.params.seller;
+  payment.currency = ev.params.currency;
+  payment.amount = ev.params.sellerProceeds;
+  payment.paymentType = "SELLER_PROCEEDS";
+  payment.timestamp = ev.block.timestamp;
+  payment.txHash = ev.transaction.hash;
+  payment.blockNumber = ev.block.number;
+
+  payment.save();
+}
+
+// ------------------------- collection whitelist handlers -------------------------
+
+export function handleCollectionAddedToWhitelist(
+  ev: CollectionAddedToWhitelist
+): void {
+  const id = collectionEntityId(ev.params.tokenAddress);
+  let wc = WhitelistedCollection.load(id);
+
+  if (wc == null) {
+    wc = new WhitelistedCollection(id);
+    wc.chainId = CHAIN_ID;
+    wc.collection = ev.params.tokenAddress;
+    wc.addedAt = ev.block.timestamp;
+  }
+
+  wc.isWhitelisted = true;
+  wc.lastUpdatedAt = ev.block.timestamp;
+  wc.save();
+}
+
+export function handleCollectionRemovedFromWhitelist(
+  ev: CollectionRemovedFromWhitelist
+): void {
+  const id = collectionEntityId(ev.params.tokenAddress);
+  let wc = WhitelistedCollection.load(id);
+
+  if (wc == null) {
+    // Shouldn't happen, but handle gracefully
+    wc = new WhitelistedCollection(id);
+    wc.chainId = CHAIN_ID;
+    wc.collection = ev.params.tokenAddress;
+    wc.addedAt = ev.block.timestamp;
+  }
+
+  wc.isWhitelisted = false;
+  wc.lastUpdatedAt = ev.block.timestamp;
+  wc.save();
+}
+
+// ------------------------- currency whitelist handlers -------------------------
+
+export function handleCurrencyAllowed(ev: CurrencyAllowed): void {
+  const id = currencyEntityId(ev.params.currency);
+  let ac = AllowedCurrency.load(id);
+
+  if (ac == null) {
+    ac = new AllowedCurrency(id);
+    ac.chainId = CHAIN_ID;
+    ac.currency = ev.params.currency;
+    ac.addedAt = ev.block.timestamp;
+  }
+
+  ac.isAllowed = true;
+  ac.lastUpdatedAt = ev.block.timestamp;
+  ac.save();
+}
+
+export function handleCurrencyRemoved(ev: CurrencyRemoved): void {
+  const id = currencyEntityId(ev.params.currency);
+  let ac = AllowedCurrency.load(id);
+
+  if (ac == null) {
+    // Shouldn't happen, but handle gracefully
+    ac = new AllowedCurrency(id);
+    ac.chainId = CHAIN_ID;
+    ac.currency = ev.params.currency;
+    ac.addedAt = ev.block.timestamp;
+  }
+
+  ac.isAllowed = false;
+  ac.lastUpdatedAt = ev.block.timestamp;
+  ac.save();
 }
