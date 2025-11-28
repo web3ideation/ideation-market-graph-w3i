@@ -8,9 +8,9 @@ dataSources:
     name: IdeationMarketDiamond
     network: sepolia
     source:
-      address: "0x8cE90712463c87a6d62941D67C3507D090Ea9d79"
+      address: "0xF422A7779D2feB884CcC1773b88d98494A946604"
       abi: IdeationMarketFacet
-      startBlock: 9263094
+      startBlock: 9726377
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -44,9 +44,9 @@ dataSources:
     name: BuyerWhitelist
     network: sepolia
     source:
-      address: "0x8cE90712463c87a6d62941D67C3507D090Ea9d79"
+      address: "0xF422A7779D2feB884CcC1773b88d98494A946604"
       abi: BuyerWhitelistFacet
-      startBlock: 9263094
+      startBlock: 9726377
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -68,9 +68,9 @@ dataSources:
     name: CollectionWhitelist
     network: sepolia
     source:
-      address: "0x8cE90712463c87a6d62941D67C3507D090Ea9d79"
+      address: "0xF422A7779D2feB884CcC1773b88d98494A946604"
       abi: CollectionWhitelistFacet
-      startBlock: 9263094
+      startBlock: 9726377
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -92,9 +92,9 @@ dataSources:
     name: CurrencyWhitelist
     network: sepolia
     source:
-      address: "0x8cE90712463c87a6d62941D67C3507D090Ea9d79"
+      address: "0xF422A7779D2feB884CcC1773b88d98494A946604"
       abi: CurrencyWhitelistFacet
-      startBlock: 9263094
+      startBlock: 9726377
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
