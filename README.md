@@ -76,10 +76,10 @@ yarn add -D @graphprotocol/graph-cli@0.90.0 @graphprotocol/graph-ts@0.36.0
 
 ```bash
 # Generate AssemblyScript types from schema + ABIs
-yarn graph:codegen   # or: ./node_modules/.bin/graph codegen
+./node_modules/.bin/graph codegen
 
 # Compile mappings to WASM
-yarn graph:build     # or: ./node_modules/.bin/graph build
+./node_modules/.bin/graph build
 ```
 
 > If you see an event signature error, ensure the `event:` lines in `subgraph.yaml` match the ABI exactly (names, `indexed` flags, and argument order).
